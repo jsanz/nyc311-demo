@@ -9,7 +9,7 @@ const node = process.env.ELASTIC_HOST || 'http://localhost:9200';
 const username = process.env.ELASTIC_USER || 'elastic';
 const password = process.env.ELASTIC_PASSWORD || 'changeme';
 
-const index = process.env.ELASTIC_INDEX || 'flight_tracking*';
+const index = process.env.ELASTIC_INDEX || '311';
 const geomField = process.env.ELASTIC_GEOM_FIELD || 'location';
 
 const client = new Client({ node, auth: { username, password } });
@@ -40,15 +40,28 @@ const server = http.createServer(async function (request, response) {
             const body = {
                 exact_bounds: true,
                 extent: 4096,
-                grid_agg: 'geohex',
-                grid_precision: 5,
+                grid_agg: 'geotile',
+                grid_precision: 8,
                 grid_type: 'grid',
-                size: 0,
+                size: 10000,
                 track_total_hits: false,
                 query: {
-                    "match_all": {}
-                }
-            }
+                    bool: {
+                        filter: [
+                            {
+                                range: {
+                                    "Created Date": {
+                                        format: "strict_date_optional_time",
+                                        gte: "2020-11-01T00:00:00Z",
+                                        lte: "2022-11-02T00:00:00Z"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                fields: ["Complaint Type"]
+            };
 
             const tile = await client.searchMvt({
                 index,

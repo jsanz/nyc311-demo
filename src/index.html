@@ -1,241 +1,136 @@
 <!DOCTYPE html>
 <html data-theme="light">
-<head>
+  <head>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-    <link rel="icon" href="https://elastic.co/favicon.ico" type="image/x-icon">
-    <script src='https://unpkg.com/maplibre-gl@1.15.2/dist/maplibre-gl.js'></script>
-    <link href='https://unpkg.com/maplibre-gl@1.15.2/dist/maplibre-gl.css' rel='stylesheet' />
-    <link rel="stylesheet" href="https://unpkg.com/@picocss/pico@latest/css/pico.min.css" />
+    <link rel="icon" href="https://elastic.co/favicon.ico" type="image/x-icon" />
+    <script src="https://unpkg.com/maplibre-gl@1.15.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@1.15.2/dist/maplibre-gl.css" rel="stylesheet" />
     <style>
-        :root {
-            --spacing: .25rem;
-            --font-size: 14px;
-            --form-element-spacing-vertical: .5rem;
-            --form-element-spacing-horizontal: .25rem;
-        }
-
-        #map {
-            position: absolute;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            left: 0;
-            z-index: 1;
-        }
-
-        #form {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background-color: rgba(255, 255, 255, 0.75);
-            z-index: 2;
-            padding: 10px;
-            /*width: 500px;*/
-        }
-
-        #show_data {
-            margin-top: var(--form-element-spacing-vertical);
-        }
-
-        legend {
-            font-size: calc(var(--font-size) * 1.3);
-        }
+      #map {
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 1;
+      }
     </style>
-</head>
-<body>
-<div id="form">
-        <legend>Add an Elasticsearch layer</legend>
-        <div class="">
-            <label for="index">Index</label>
-                <input required type="text" id="index" value="flight_tracking*" />
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      let loaded = false;
+      const map = new maplibregl.Map({
+        container: "map",
+        center: [-73.99, 40.708],
+        zoom: 11,
+        minZoom: 12,
+        maxBounds: [-74.262772, 40.487171, -73.745728, 40.907804],
+        hash: true,
+        style: "https://api.maptiler.com/maps/basic-v2-light/style.json?key=Q8UaCcftbOpyD2eC5SJS",
+      });
+      map.addControl(new maplibregl.NavigationControl());
 
-            <label for="geometry_field">Geometry field</label>
-                <input required type="text" id="geometry_field" value="location"/>
+      map.on("load", showLayer);
 
-            <label>Layer type</label>
-            <div>
-                <input type="radio" name="renderMethod" id="grid" value="grid" checked /><label for="grid"><small>Grid</small></label><br/>
-                <input type="radio" name="renderMethod" id="hex" value="hex"  /><label for="hex"><small>Hexagons</small></label><br/>
-                <input type="radio" name="renderMethod" id="hits" value="hits" /><label for="hits"><small>Documents</small></label>
-            </div>
+      function showLayer() {
+        const sourceName = "es_mvt";
+        const circleStyle = "layer_point";
 
-            <label for="search">Search</label>
-                <input required type="text" id="search" />
+        const circeRadius = { base: 1.75, stops: [ [12, 4], [22, 180], ], };
 
-
-            <p>Features: <strong><span id="count"></span></strong></p>
-            <input type="button" id="show_data" value="Show" onclick="showLayer()" />
-        </div>
-    </fieldset>
-</div>
-<div id="map"></div>
-<script>
-
-
-    let loaded = false;
-    const intFormatter = new Intl.NumberFormat('en-US', { maximumSignificantDigits: 3 });
-
-
-    const map = new maplibregl.Map({
-        container: 'map',
-        center: [0, 0],
-        style: 'https://api.maptiler.com/maps/voyager/style.json?key=LqOKqjXlNHCUvaHo6msW',
-        zoom: 1.28
-    });
-
-    map.on('load', function () {
-        loaded = true;
-    });
-
-    map.on('data', counts);
-    map.on('moveend', counts);
-
-    function counts() {
-        const features = map.queryRenderedFeatures();
-        const countEl = document.getElementById('count');
-        const preCount = countEl.textContent;
-        // Features can be single documents or aggregated hex or grid
-        const count = features[0]?.properties.hasOwnProperty('_count') ?
-            features
-                .filter( f => f?.layer?.id == 'layer_fill')
-                .reduce((acc,cur) => acc + cur.properties._count, 0) :
-            features.length;
-
-        if (!count) return;
-        
-        // Render the count
-        const formattedCount = intFormatter.format(count);
-        if (preCount != formattedCount){
-            countEl.textContent = formattedCount;
-        }
-    };
-
-    function showLayer() {
-        if (!loaded) {
-            return;
-        }
-
-        const indexName = document.getElementById('index').value;
-        const geometryFieldName = document.getElementById('geometry_field').value;
-        const renderMethod = document.querySelector( 'input[name="renderMethod"]:checked' ).value;
-        const searchQuery = document.getElementById('search').value;
-
-        if (!indexName) {
-            alert('Cannot show layer. Please set "Elasticsearch index name"');
-            return;
-        }
-        if (!indexName || !geometryFieldName) {
-            alert('Cannot show layer. Please set "Field name of geometry"');
-            return;
-        }
-
-        const sourceName = 'es_mvt'; // arbitrary value, you can use any string you like
-        const fillStyle = 'layer_fill'; // arbitrary value, you can use any string you like
-        const outlineStyle = 'layer_line'; // arbitrary value, you can use any string you like
-        const circleStyle = 'layer_point'; /// arbitrary value, you can use any string you like
-        // Elasticsearch vector tile API returns tiles with 3 layers
-        // "hits": Contains a feature for each document (hit) matching search criteria.
-        // "aggs": Contains a feature for each bucket returned from geotile_grid or geohex_grid aggregation.
-        // "meta": Contains a single feature with meta data about the feature properties.
-        //         These are useful for calculating dynamic style ranges but not used in this example.
-        // 
-        // 'vector' layer specification requires "source-layer" property. This property identifies the layer to display from the tile.
-        const sourceLayer = renderMethod === "grid" || renderMethod === "hex" ? "aggs" : "hits"; // not arbitrary value - must be layer name provided from tile
-
-        if (map.getSource(sourceName)) {
-            map.removeLayer(outlineStyle);
-            map.removeLayer(fillStyle);
-            map.removeLayer(circleStyle);
-            map.removeSource(sourceName);
-        }
+        const colorMappings = [
+          "Noise - Residential",
+          "#8dd3c7",
+          "Illegal Parking",
+          "#ffffb3",
+          "Heat/hot Water",
+          "#bebada",
+          "Noise - Street/sidewalk",
+          "#fb8072",
+          "Blocked Driveway",
+          "#80b1d3",
+          "Noise - Vehicle",
+          "#fdb462",
+          "Street Condition",
+          "#b3de69",
+          "Unsanitary Condition",
+          "#fccde5",
+          "Street Light Condition",
+          "#d9d9d9",
+        ];
 
         map.addSource(sourceName, {
-            'type': 'vector',
-            'tiles': [
-                window.location.href +
-                `tile?index=${indexName}&geometry=${geometryFieldName}&renderMethod=${renderMethod}&x={x}&y={y}&z={z}&searchQuery=${searchQuery}`
-            ],
-            'minzoom': 0,
-            'maxzoom': 24
+          type: "vector",
+          tiles: [
+            window.location.origin +
+            "/tile/{z}/{x}/{y}",
+          ],
+          minzoom: 12,
+          maxzoom: 24,
         });
 
-        const fillColor = 'rgb(255,0,0)';
-        const fillOpacity = 0.5;
-        const strokeColor = 'rgb(255,0,0)';
-        const strokeOpacity = 1;
-        const strokeWidth = 1;
+        map.addLayer({
+          id: "complaints",
+          type: "circle",
+          source: sourceName,
+          "source-layer": "hits",
+          paint: {
+            "circle-radius": circeRadius,
+            "circle-color": [
+              "match",
+              ["get", "Complaint Type"],
+              "Noise - Residential",
+              "#8dd3c7",
+              "Illegal Parking",
+              "#ffffb3",
+              "Heat/hot Water",
+              "#bebada",
+              "Noise - Street/sidewalk",
+              "#fb8072",
+              "Blocked Driveway",
+              "#80b1d3",
+              "Noise - Vehicle",
+              "#fdb462",
+              "Street Condition",
+              "#b3de69",
+              "Unsanitary Condition",
+              "#fccde5",
+              "Street Light Condition",
+              "#d9d9d9",
+              ["rgba", 0, 0, 0, 0],
+            ],
+          },
+        });
 
-        map.addLayer(
-            {
-                'id': outlineStyle,
-                'type': 'line',
-                'source': sourceName,
-                'source-layer': sourceLayer,
-                'paint': {
-                    'line-opacity': strokeOpacity,
-                    'line-color': strokeColor,
-                    'line-width': 1,
-                }
+
+        map.on('click', 'complaints', function (e) {
+            var coordinates = e.features[0].geometry.coordinates.slice();
+            var description = e.features[0].properties["Complaint Type"];
+            
+            // Ensure that if the map is zoomed out such that multiple
+            // copies of the feature are visible, the popup appears
+            // over the copy being pointed to.
+            while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
             }
-        );
-        map.setFilter(outlineStyle, [
-            'any',
-            ['==', ['geometry-type'], 'Polygon'],
-            ['==', ['geometry-type'], 'MultiPolygon'],
-            ['==', ['geometry-type'], 'LineString'],
-            ['==', ['geometry-type'], 'MultiLineString'],
-        ]);
-
-        map.addLayer(
-            {
-                'id': fillStyle,
-                'type': 'fill',
-                'source': sourceName,
-                'source-layer': sourceLayer,
-                'paint': {
-                    'fill-opacity': fillOpacity,
-                    'fill-color': fillColor,
-                }
-            }
-        );
-        map.setFilter(fillStyle, [
-            'any',
-            ['==', ['geometry-type'], 'Polygon'],
-            ['==', ['geometry-type'], 'MultiPolygon'],
-        ]);
-
-        map.addLayer(
-            {
-                'id': circleStyle,
-                'type': 'circle',
-                'source': sourceName,
-                'source-layer': sourceLayer,
-                'paint': {
-                    'circle-radius': 4,
-                    'circle-color': fillColor,
-                    'circle-opacity': fillOpacity,
-                    'circle-stroke-color': strokeColor,
-                    'circle-stroke-opacity': strokeOpacity,
-                    'circle-stroke-width': strokeWidth,
-                }
-            }
-        );
-        map.setFilter(circleStyle, [
-            'any',
-            ['==', ['geometry-type'], 'Point'],
-            ['==', ['geometry-type'], 'MultiPoint'],
-        ]);
-    }
-
-
-    document.onkeydown = function (evt) {
-        var keyCode = evt
-            ? evt.which
-                ? evt.which
-                : evt.keyCode
-            : event.keyCode;
-        if (keyCode == 13) { showLayer(); }
-    };
-</script>
-</body>
+            
+            new maplibregl.Popup()
+            .setLngLat(coordinates)
+            .setHTML(description)
+            .addTo(map);
+        });
+            
+        // Change the cursor to a pointer when the mouse is over the places layer.
+        map.on('mouseenter', 'complaints', function () {
+            map.getCanvas().style.cursor = 'pointer';
+        });
+            
+        // Change it back to a pointer when it leaves.
+        map.on('mouseleave', 'complaints', function () {
+            map.getCanvas().style.cursor = '';
+        });
+      }
+    </script>
+  </body>
 </html>
