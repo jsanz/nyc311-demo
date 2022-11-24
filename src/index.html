@@ -21,7 +21,7 @@
     <script>
       const map = new maplibregl.Map({
         container: "map",
-        center: [-73.99, 40.708],
+        center: [-73.99, 40.708], // Center in NYC
         zoom: 11,
         minZoom: 12,
         hash: true,
@@ -33,33 +33,11 @@
       map.on("load", showLayer);
 
       function showLayer() {
-        const sourceName = "es_mvt";
-        const circleStyle = "layer_point";
-
-        const colorMappings = [
-          "Noise - Residential",
-          "#8dd3c7",
-          "Illegal Parking",
-          "#ffffb3",
-          "Heat/hot Water",
-          "#bebada",
-          "Noise - Street/sidewalk",
-          "#fb8072",
-          "Blocked Driveway",
-          "#80b1d3",
-          "Noise - Vehicle",
-          "#fdb462",
-          "Street Condition",
-          "#b3de69",
-          "Unsanitary Condition",
-          "#fccde5",
-          "Street Light Condition",
-          "#d9d9d9",
-        ];
+        const sourceName = "es";
 
         map.addSource(sourceName, {
           type: "vector",
-          tiles: [window.location.origin + "/tile/{z}/{x}/{y}"],
+          tiles: [window.location.origin + "/tile/{z}/{x}/{y}"], // Our vector tiles server
           minzoom: 12,
           maxzoom: 24,
         });
@@ -70,29 +48,22 @@
           source: sourceName,
           "source-layer": "hits",
           paint: {
+            // Change point size by zoom level
             "circle-radius": { base: 1.75, stops: [[12, 4], [22, 180],] },
+            // Change color by complaint type
             "circle-color": [
               "match",
               ["get", "Complaint Type"],
-              "Noise - Residential",
-              "#8dd3c7",
-              "Illegal Parking",
-              "#ffffb3",
-              "Heat/hot Water",
-              "#bebada",
-              "Noise - Street/sidewalk",
-              "#fb8072",
-              "Blocked Driveway",
-              "#80b1d3",
-              "Noise - Vehicle",
-              "#fdb462",
-              "Street Condition",
-              "#b3de69",
-              "Unsanitary Condition",
-              "#fccde5",
-              "Street Light Condition",
-              "#d9d9d9",
-              ["rgba", 0, 0, 0, 0],
+              "Noise - Residential", "#8dd3c7",
+              "Illegal Parking", "#ffffb3",
+              "Heat/hot Water", "#bebada",
+              "Noise - Street/sidewalk", "#fb8072",
+              "Blocked Driveway", "#80b1d3",
+              "Noise - Vehicle", "#fdb462",
+              "Street Condition", "#b3de69",
+              "Unsanitary Condition", "#fccde5",
+              "Street Light Condition", "#d9d9d9",
+              ["rgba", 200, 200, 200, 0.1], // rest of the data will be almost transparent
             ],
           },
         });
