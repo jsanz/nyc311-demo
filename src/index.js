@@ -37,6 +37,14 @@ const server = http.createServer(async function (request, response) {
         try {
             const { x, y, zoom } = match.groups;
 
+            const dataFields =  [
+                "Complaint Type",
+                "Agency Name",
+                "Created Date",
+                "Closed Date",
+                "Resolution Description"
+            ];
+
             const body = {
                 exact_bounds: true,
                 extent: 4096,
@@ -53,14 +61,14 @@ const server = http.createServer(async function (request, response) {
                                     "Created Date": {
                                         format: "strict_date_optional_time",
                                         gte: "2020-11-01T00:00:00Z",
-                                        lte: "2022-11-02T00:00:00Z"
+                                        lte: "2020-12-01T00:00:00Z"
                                     }
                                 }
                             }
                         ]
                     }
                 },
-                fields: ["Complaint Type"]
+                fields: dataFields
             };
 
             const tile = await client.searchMvt({

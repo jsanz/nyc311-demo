@@ -19,16 +19,15 @@
   <body>
     <div id="map"></div>
     <script>
-      let loaded = false;
       const map = new maplibregl.Map({
         container: "map",
         center: [-73.99, 40.708],
         zoom: 11,
         minZoom: 12,
-        maxBounds: [-74.262772, 40.487171, -73.745728, 40.907804],
         hash: true,
         style: "https://api.maptiler.com/maps/basic-v2-light/style.json?key=Q8UaCcftbOpyD2eC5SJS",
       });
+
       map.addControl(new maplibregl.NavigationControl());
 
       map.on("load", showLayer);
@@ -36,8 +35,6 @@
       function showLayer() {
         const sourceName = "es_mvt";
         const circleStyle = "layer_point";
-
-        const circeRadius = { base: 1.75, stops: [ [12, 4], [22, 180], ], };
 
         const colorMappings = [
           "Noise - Residential",
@@ -62,10 +59,7 @@
 
         map.addSource(sourceName, {
           type: "vector",
-          tiles: [
-            window.location.origin +
-            "/tile/{z}/{x}/{y}",
-          ],
+          tiles: [window.location.origin + "/tile/{z}/{x}/{y}"],
           minzoom: 12,
           maxzoom: 24,
         });
@@ -76,7 +70,7 @@
           source: sourceName,
           "source-layer": "hits",
           paint: {
-            "circle-radius": circeRadius,
+            "circle-radius": { base: 1.75, stops: [[12, 4], [22, 180],] },
             "circle-color": [
               "match",
               ["get", "Complaint Type"],
@@ -101,34 +95,6 @@
               ["rgba", 0, 0, 0, 0],
             ],
           },
-        });
-
-
-        map.on('click', 'complaints', function (e) {
-            var coordinates = e.features[0].geometry.coordinates.slice();
-            var description = e.features[0].properties["Complaint Type"];
-            
-            // Ensure that if the map is zoomed out such that multiple
-            // copies of the feature are visible, the popup appears
-            // over the copy being pointed to.
-            while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-            coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-            }
-            
-            new maplibregl.Popup()
-            .setLngLat(coordinates)
-            .setHTML(description)
-            .addTo(map);
-        });
-            
-        // Change the cursor to a pointer when the mouse is over the places layer.
-        map.on('mouseenter', 'complaints', function () {
-            map.getCanvas().style.cursor = 'pointer';
-        });
-            
-        // Change it back to a pointer when it leaves.
-        map.on('mouseleave', 'complaints', function () {
-            map.getCanvas().style.cursor = '';
         });
       }
     </script>
