@@ -1,0 +1,13 @@
+{
+  "name": "nyc311-demo",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Jorge Sanz <jorge@jorgesanz.net>",
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@elastic/elasticsearch": "^8.5.0"
+  }
+}
