@@ -36,23 +36,14 @@ const server = http.createServer(async function (request, response) {
 
         try {
             const { x, y, zoom } = match.groups;
-
-            const dataFields =  [
-                "Complaint Type",
-                "Agency Name",
-                "Created Date",
-                "Closed Date",
-                "Resolution Description"
-            ];
+            const dataFields = [
+                "Complaint Type", "Agency Name", "Created Date",
+                "Closed Date", "Resolution Description"];
 
             const body = {
                 exact_bounds: true,
-                extent: 4096,
-                grid_agg: 'geotile',
-                grid_precision: 8,
-                grid_type: 'grid',
-                size: 10000,
-                track_total_hits: false,
+                extent: 4096, grid_agg: 'geotile', grid_precision: 8, grid_type: 'grid',
+                size: 10000, track_total_hits: false,
                 query: {
                     bool: {
                         filter: [
@@ -72,12 +63,7 @@ const server = http.createServer(async function (request, response) {
             };
 
             const tile = await client.searchMvt({
-                index,
-                field: geomField,
-                zoom,
-                x,
-                y,
-                ...body,
+                index, field: geomField, zoom, x, y, ...body,
             }, { meta: true });
 
             // set response header
@@ -88,7 +74,6 @@ const server = http.createServer(async function (request, response) {
                 'Cache-Control': `public, max-age=0`,
                 'Last-Modified': `${new Date().toUTCString()}`,
             });
-
             // set response content
             response.write(tile.body);
             console.log(`[200] Sending tile ${zoom}/${x}/${y}`);
@@ -98,7 +83,6 @@ const server = http.createServer(async function (request, response) {
             response.write(e?.meta?.body ? JSON.stringify(e?.meta?.body) : '');
             response.end();
         }
-
         response.end();
     } else if (request.url === '/') {
         console.error(`[200] Serving the frontpage`);
